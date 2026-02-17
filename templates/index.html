@@ -1,1 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberGuard | Phishing Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+</head>
+<body>
 
+    <div class="grid-bg"></div>
+
+    <div class="container min-vh-100 d-flex align-items-center py-5">
+        <div class="row w-100 gx-5">
+            
+            <div class="col-lg-6 mb-4">
+                <div class="card glass-card p-4 fade-in">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box me-3">
+                            <i class="fas fa-radar text-primary fa-2x"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold text-white mb-0">CYBER<span class="text-primary">GUARD</span></h3>
+                            <small class="text-white-50">Real-time URL Threat Analysis</small>
+                        </div>
+                    </div>
+
+                    <form action="/" method="post" id="scanForm" onsubmit="showLoader()">
+                        <div class="input-group mb-3 glowing-border">
+                            <span class="input-group-text bg-transparent border-0 text-primary">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" class="form-control bg-transparent text-white border-0" 
+                                   name="url" placeholder="Paste suspicious URL here..." required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 cyber-btn">INITIATE SCAN</button>
+                    </form>
+
+                    <div id="loader" class="text-center mt-3" style="display: none;">
+                        <div class="cyber-spinner mb-2"></div>
+                        <small class="text-primary blink">DECRYPTING PROTOCOLS...</small>
+                    </div>
+
+                    {% if history %}
+                    <div class="mt-4">
+                        <h6 class="text-primary border-bottom border-secondary pb-2 mb-3">
+                            <i class="fas fa-history me-2"></i>RECENT SCANS
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover table-sm text-sm" style="background: transparent;">
+                                <thead>
+                                    <tr>
+                                        <th class="text-white-50">Domain</th>
+                                        <th class="text-white-50">Status</th>
+                                        <th class="text-white-50">Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in history %}
+<tr 
+    data-item="{{ item|tojson|forceescape }}" 
+    onclick="loadHistory(JSON.parse(this.dataset.item))" 
+    style="cursor: pointer;" 
+    title="Click to view details">
+                                            <td class="text-truncate" style="max-width: 150px;">
+                                            <span class="d-inline-block text-truncate" style="max-width: 140px;">{{ item.domain }}</span>
+                                        </td>
+                                        <td>
+                                            {% if item.status == 'Safe' %}
+                                                <span class="badge bg-success bg-opacity-25 text-success">SAFE</span>
+                                            {% else %}
+                                                <span class="badge bg-danger bg-opacity-25 text-danger">UNSAFE</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-white-50">{{ item.confidence }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-white-50 fst-italic">* Click any row to view full report</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div id="resultPanel">
+                {% if url %}
+                    <div class="card glass-card p-4 h-100 result-card slide-left d-flex flex-column">
+                        <h5 class="text-white mb-4 border-bottom border-secondary pb-2">
+                            <i class="fas fa-file-contract me-2 text-primary"></i>SCAN REPORT
+                        </h5>
+
+                        {% if xx >= 0.50 %}
+                            <div class="alert cyber-alert-success text-center py-4 flex-grow-1 d-flex flex-column justify-content-center">
+                                <div class="mb-3"><i class="fas fa-shield-alt fa-4x"></i></div>
+                                <h2 class="fw-bold display-5">SECURE</h2>
+                                <p class="mb-0 text-white-50">Safety Score: <span class="text-white fw-bold">{{ (xx * 100)|round(1) }}%</span></p>
+                            </div>
+                        {% else %}
+                            <div class="alert cyber-alert-danger text-center py-4 flex-grow-1 d-flex flex-column justify-content-center">
+                                <div class="mb-3"><i class="fas fa-biohazard fa-4x"></i></div>
+                                <h2 class="fw-bold display-5">THREAT DETECTED</h2>
+                                <p class="mb-0 text-white-50">Threat Likelihood: <span class="text-white fw-bold">{{ ((1 - xx) * 100)|round(1) }}%</span></p>
+                            </div>
+                        {% endif %}
+
+                        <div class="details-grid mt-3">
+                            <div class="detail-item full-width">
+                                <small class="text-white-50 text-uppercase" style="font-size: 0.7rem;">Target Domain</small>
+                                <div class="text-white text-break fw-bold">{{ details.domain }}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <small class="text-white-50">IP ADDRESS</small>
+                                <div class="text-white">{{ details.ip_address }}</div>
+                            </div>
+                            <div class="detail-item">
+                                <small class="text-white-50">DOMAIN AGE</small>
+                                <div class="{{ 'text-danger' if details.age_years < 1 else 'text-success' }}">
+                                    {{ details.age_years }} Years
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <small class="text-white-50">LOCATION</small>
+                                <div class="text-white text-truncate">{{ details.server_location }}</div>
+                            </div>
+                            <div class="detail-item">
+                                <small class="text-white-50">REGISTRAR</small>
+                                <div class="text-white text-truncate">{{ details.registrar }}</div>
+                            </div>
+                        </div>
+
+                        {% if details.risk_flags %}
+                        <div class="mt-3">
+                            <small class="text-danger fw-bold"><i class="fas fa-exclamation-triangle me-1"></i> THREAT INDICATORS</small>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                {% for flag in details.risk_flags %}
+                                    <span class="badge bg-danger text-white border border-light">{{ flag }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4 d-flex gap-2">
+                            <button class="btn btn-outline-light flex-grow-1" onclick="window.open('{{url}}', '_blank')">
+                                VISIT SITE <i class="fas fa-external-link-alt ms-2"></i>
+                            </button>
+                            <a href="/" class="btn btn-outline-primary">CLEAR</a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="h-100 d-flex align-items-center justify-content-center text-white-50 border border-secondary rounded p-5 dashed-placeholder">
+                        <div class="text-center">
+                            <i class="fas fa-microchip fa-3x mb-3 opacity-25"></i>
+                            <p class="mb-0">SYSTEM READY</p>
+                            <small class="opacity-50">AWAITING INPUT STREAM...</small>
+                        </div>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+        }
+
+        // --- NEW FUNCTION: Loads history item into the right panel ---
+        function loadHistory(item) {
+            const panel = document.getElementById('resultPanel');
+            const isSafe = item.status === 'Safe';
+            
+            // Generate HTML for Risk Flags if they exist
+            let flagsHtml = '';
+            if (item.risk_flags && item.risk_flags.length > 0) {
+                flagsHtml = `
+                    <div class="mt-3">
+                        <small class="text-danger fw-bold"><i class="fas fa-exclamation-triangle me-1"></i> THREAT INDICATORS</small>
+                        <div class="d-flex flex-wrap gap-2 mt-1">
+                            ${item.risk_flags.map(flag => `<span class="badge bg-danger text-white border border-light">${flag}</span>`).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            // Generate HTML based on status
+            const statusHtml = isSafe 
+                ? `<div class="alert cyber-alert-success text-center py-4 flex-grow-1 d-flex flex-column justify-content-center">
+                        <div class="mb-3"><i class="fas fa-shield-alt fa-4x"></i></div>
+                        <h2 class="fw-bold display-5">SECURE</h2>
+                        <p class="mb-0 text-white-50">Safety Score: <span class="text-white fw-bold">${item.confidence}%</span></p>
+                   </div>`
+                : `<div class="alert cyber-alert-danger text-center py-4 flex-grow-1 d-flex flex-column justify-content-center">
+                        <div class="mb-3"><i class="fas fa-biohazard fa-4x"></i></div>
+                        <h2 class="fw-bold display-5">THREAT DETECTED</h2>
+                        <p class="mb-0 text-white-50">Threat Likelihood: <span class="text-white fw-bold">${item.confidence}%</span></p>
+                   </div>`;
+
+            // Inject into Right Panel
+            panel.innerHTML = `
+                <div class="card glass-card p-4 h-100 result-card slide-left d-flex flex-column">
+                    <h5 class="text-white mb-4 border-bottom border-secondary pb-2">
+                        <i class="fas fa-history me-2 text-primary"></i>HISTORY REPORT
+                    </h5>
+                    
+                    ${statusHtml}
+
+                    <div class="details-grid mt-3">
+                        <div class="detail-item full-width">
+                            <small class="text-white-50 text-uppercase" style="font-size: 0.7rem;">Target Domain</small>
+                            <div class="text-white text-break fw-bold">${item.domain}</div>
+                        </div>
+                        <div class="detail-item">
+                            <small class="text-white-50">IP ADDRESS</small>
+                            <div class="text-white">${item.ip_address}</div>
+                        </div>
+                        <div class="detail-item">
+                            <small class="text-white-50">DOMAIN AGE</small>
+                            <div class="${item.age_years < 1 ? 'text-danger' : 'text-success'}">
+                                ${item.age_years} Years
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <small class="text-white-50">LOCATION</small>
+                            <div class="text-white text-truncate">${item.location}</div>
+                        </div>
+                        <div class="detail-item">
+                            <small class="text-white-50">REGISTRAR</small>
+                            <div class="text-white text-truncate">${item.registrar}</div>
+                        </div>
+                    </div>
+
+                    ${flagsHtml}
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button class="btn btn-outline-light flex-grow-1" onclick="window.open('${item.url}', '_blank')">
+                            VISIT SITE <i class="fas fa-external-link-alt ms-2"></i>
+                        </button>
+                        <a href="/" class="btn btn-outline-primary">CLEAR</a>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
